@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # setup-vpn.sh — одной командой разворачивает на VPS:
-#   1) apt update && upgrade
+#   1) apt update
 #   2) Docker (get.docker.com)
 #   3) docker-compose (ставится всегда, независимо от того, что уже есть)
 #   4) настройка registry-mirrors на случай недоступности docker.io
@@ -39,7 +39,7 @@ echo "==> 0/6: определение публичного IP"
 VPN_PUBLIC_IP="${VPN_PUBLIC_IP:-$(curl -4 -fsSL ifconfig.me)}"
 echo "    Публичный IP: ${VPN_PUBLIC_IP}"
 
-echo "==> 1/6: apt update && upgrade"
+echo "==> 1/6: apt update"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
 
@@ -51,19 +51,8 @@ else
 fi
 systemctl enable --now docker
 
-echo "==> 3/6: установка docker-compose (всегда, вне зависимости от того, что уже стоит)"
-apt-get install -y docker-compose-plugin
-if docker compose version >/dev/null 2>&1; then
-    COMPOSE_CMD="docker compose"
-else
-    # fallback на классический standalone-бинарник, если plugin по какой-то причине не встал
-    if ! command -v docker-compose >/dev/null 2>&1; then
-        curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        chmod +x /usr/local/bin/docker-compose
-    fi
-    COMPOSE_CMD="docker-compose"
-fi
-echo "    Будет использоваться: ${COMPOSE_CMD}"
+echo "==> 3/6: установка docker-compose"
+apt install -y docker-compose
 
 echo "==> 4/6: настройка registry-mirrors (на случай недоступности docker.io)"
 # Если VPS не может достучаться до auth.docker.io напрямую (таймауты),
@@ -115,7 +104,6 @@ VPN_PASSWORD=${VPN_PASSWORD}
 VPN_DNS_SRV1=${VPN_DNS_SRV1}
 VPN_DNS_SRV2=${VPN_DNS_SRV2}
 EOF
-chmod 600 /root/l2tp/vpn.env
 
 # ---- /root/pptp/compose.yaml ----
 cat > /root/pptp/compose.yaml <<'EOF'
@@ -141,11 +129,10 @@ cat > /root/pptp/chap-secrets <<EOF
 # client      server    secret         IP addresses
 ${VPN_USER}          pptpd     ${PPTP_PASSWORD}      *
 EOF
-chmod 600 /root/pptp/chap-secrets
 
 echo "==> 6/6: запуск контейнеров"
-(cd /root/l2tp && ${COMPOSE_CMD} up -d)
-(cd /root/pptp && ${COMPOSE_CMD} up -d)
+(cd /root/l2tp && docker compose up -d)
+(cd /root/pptp && docker compose up -d)
 
 echo
 echo "================= ГОТОВО ================="

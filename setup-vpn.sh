@@ -42,7 +42,6 @@ echo "    Публичный IP: ${VPN_PUBLIC_IP}"
 echo "==> 1/6: apt update && upgrade"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y
-apt-get upgrade -y
 
 echo "==> 2/6: установка Docker"
 if ! command -v docker >/dev/null 2>&1; then
